@@ -1,37 +1,28 @@
-import logging
 import json
-from datetime import datetime
-import pandas as pd
 from typing import Dict, Any
-from utils import greeting  # Импортируем функцию greeting из utils.py
+
+from src.services import top_cashback_categories, top_cashback_categories_count, investment_bank_sum, \
+    investment_bank_smart_step, investment_bank_count, simple_search
 
 # Настройка логирования
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+import logging
+import pandas as pd
+from datetime import datetime, time
+
+from src.utils import greeting
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, filename="app.log", format="%(asctime)s - %(levelname)s - %(message)s")
 
 
-def home_page(date_str: str) -> str:
-    logging.info("Формирование ответа для страницы 'Главная' с датой: %s", date_str)
+def home_page(current_date_str=None):
+    current_date = datetime.now()
+    greeting_message = greeting(current_date)
+    # Выводим результат
+    print(greeting_message)
+    return greeting_message
 
-    try:
-        date_ = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-    except ValueError as e:
-        logging.error("Неверный формат даты: %s", date_str)
-        raise ValueError("Ожидается формат 'YYYY-MM-DD HH:MM:SS'") from e
-
-    # Получаем приветствие
-    greeting_message = greeting(date_)
-
-
-# Создаем объект datetime с текущей или произвольной датой и временем
-date_ = datetime(2025, 9, 29, 4, 38, 0)  # Пример: 29 сентября 2025, 14:38
-
-# Получаем приветствие
-greeting_message = greeting(date_)
-
-# Выводим результат
-print(greeting_message)
+home_page()
 
 
 def events_page(df: pd.DataFrame, period: str = 'M') -> Dict:
@@ -40,4 +31,7 @@ def events_page(df: pd.DataFrame, period: str = 'M') -> Dict:
   json, datetime, logging.
   """
 pass
+
+
+
 
