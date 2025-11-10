@@ -1,11 +1,49 @@
 import logging
+import json
+import os
 from datetime import datetime
-from typing import Dict
+from venv import logger
 
 import pandas as pd
+import requests as r
+from typing import List, Dict
+from pandas.tseries.offsets import BDay
+from dateutil.relativedelta import relativedelta
 
-logging.basicConfig(level=logging.INFO)
+def read_excel(file_name: str | None = None):
+    """
+    Функция считывает транзакции из файла .xlsx и возвращает список словарей.
+    Если файл не указан, то функция находит файл transactions.xlsx в папке data проекта.
+    Если такого файла нет - выдает "файл не найден"
+    """
+    logger.info("Функция get_read_xlsx запущена.")
+    file_dir = os.getcwd()
+    if not file_name:
+        file_path = os.path.join(file_dir, "data", "transactions.xlsx")
+    else:
+        file_path = os.path.join(file_dir, 'data', file_name)
 
+    # Проверка существования файла
+    if not os.path.isfile(file_path):
+        logger.error(f"Ошибка! Файл {file_path} не найден.")
+        return None
+    # Проверка расширения файла
+    if not file_path.endswith(".xlsx") and not file_path.endswith(".xls"):
+        logger.error(f"Ошибка! Файл {file_path} не является Excel-файлом.")
+        return None
+    try:
+        # Чтение Excel-файла
+        data_frame = pd.read_excel(file_path)
+        logger.info(f"Считывание Excel-файла успешно: {data_frame.shape[0]} записей загружено.")
+        return data_frame
+    except FileNotFoundError:
+        logger.error(f"Ошибка! Файл {file_path} не найден.")
+    except Exception as e:
+        logger.critical(f"Неизвестная ошибка: {e}")
+        return None
+    finally:
+        pass
+        logger.info("Функция get_read_xlsx завершила работу.")
 
 def greeting(date_: datetime) -> str:
     """
@@ -28,34 +66,151 @@ def greeting(date_: datetime) -> str:
         return "Добрый день"
     return "Добрый вечер"
 
-def read_transactions(file_path: str) -> pd.DataFrame:
-    """Читает Excel-файл с транзакциями (operations.xls) и
-    возвращает DataFrame (pandas). Обрабатывает ошибки чтения,
-    логирует их. """
-    pass
+def top_transactions(data, start_date=None, end_date=None):
+    if isinstance(data, list):
+        data = pd.DataFrame(data)
+    elif not isinstance(data, pd.DataFrame):
+        return json.dumps([], ensure_ascii=False)
 
-def get_currency_rate(currency: str) -> float:
-    """Получает курс валюты (USD/EUR) через API (requests).
-    Читает список валют из user_settings.json.
-    Логирует запросы и ошибки."""
-    pass
+    # Точный парсинг даты — без warning
+    data['Дата операции'] = pd.to_datetime(data['Дата операции'], format='%d.%m.%Y %H:%M:%S', errors='coerce')
+    data = data.dropna(subset=['Дата операции'])
 
-def get_stock_price(stock: str) -> float:
-    """Получает цену акции (AAPL, AMZN и т.д.) через API (requests).
-    Читает список акций из user_settings.json. Логирует запросы. """
-    pass
+    # Периоды
+    if start_date:
+        start_date = pd.to_datetime(start_date, format='%d.%m.%Y', errors='coerce') or pd.to_datetime(start_date)
+    else:
+        start_date = data['Дата операции'].min()
 
-def filter_by_date(df: pd.DataFrame, start_date: datetime, end_date: datetime) -> pd.DataFrame:
-    """Фильтрует транзакции в DataFrame по диапазону дат
-    (использует datetime). Учитывает колонку "Дата операции". """
-    pass
+    if end_date:
+        end_date = pd.to_datetime(end_date, format='%d.%m.%Y', errors='coerce') or pd.to_datetime(end_date)
+    else:
+        end_date = data['Дата операции'].max()
 
-def log_error(message: str) -> None:
-    """Логирует ошибки в файл или консоль (logging).
-    Форматирует сообщения с временной меткой."""
-    pass
+    # Фильтр: период + только расходы
+    data = data[
+        (data['Дата операции'] >= start_date) &
+        (data['Дата операции'] <= end_date) &
+        (data['Сумма операции'] < 0)
+    ]
 
-def load_json_settings(file_path: str) -> Dict:
-    """Загружает настройки (валюты, акции) из user_settings.json.
-    Возвращает словарь. Логирует ошибки чтения."""
-    pass
+    if data.empty:
+        return json.dumps([], ensure_ascii=False)
+
+    data = data.copy()
+    data['Сумма'] = data['Сумма операции'].abs()  # ← положительная сумма трат
+    data = data.sort_values('Сумма', ascending=False).head(5)
+
+    # ← ВОТ ГЛАВНОЕ ИЗМЕНЕНИЕ
+    result = data[['Дата операции', 'Сумма', 'Категория', 'Описание']].rename(columns={
+        'Дата операции': 'date',
+        'Сумма': 'amount',           # теперь amount = 1500, а не -1500
+        'Категория': 'category',
+        'Описание': 'description'
+    })
+
+    result['date'] = result['date'].dt.strftime('%d.%m.%Y %H:%M')
+
+    return result.to_json(orient='records', force_ascii=False, indent=4)
+
+
+def cards(data, start_date=None, end_date=None):
+    if isinstance(data, list):
+        data = pd.DataFrame(data)
+    elif not isinstance(data, pd.DataFrame):
+        raise ValueError("Входные данные должны быть списком словарей или DataFrame.")
+
+    # Фильтр по датам
+    data['Дата операции'] = pd.to_datetime(data['Дата операции'], format='%d.%m.%Y %H:%M:%S', errors='coerce')
+    data = data.dropna(subset=['Дата операции'])
+
+    if start_date:
+        start_date = pd.to_datetime(start_date, format='%d.%m.%Y', errors='coerce') or pd.to_datetime(start_date)
+    else:
+        start_date = data['Дата операции'].min()
+
+    if end_date:
+        end_date = pd.to_datetime(end_date, format='%d.%m.%Y', errors='coerce') or pd.to_datetime(end_date)
+    else:
+        end_date = data['Дата операции'].max()
+
+    # Фильтр расходов + статус OK + период
+    spends_only = data[
+        (data['Дата операции'] >= start_date) &
+        (data['Дата операции'] <= end_date) &
+        (data['Сумма операции'] < 0) &
+        (data['Статус'] == 'OK')
+        ]
+
+    cards_only = spends_only[spends_only['Номер карты'].notna()]
+
+    # 🔥 ФИКС: суммируем ТОЛЬКО 'Сумма операции'
+    card_sums = cards_only.groupby('Номер карты')['Сумма операции'].sum()
+
+    # Остальное — как было
+    card_sums = pd.DataFrame({'Сумма операции': card_sums})
+    card_sums["Сумма операции"] = card_sums["Сумма операции"].apply(lambda x: -x)  # положительная
+    card_sums["Номер карты"] = card_sums.index
+    card_sums["Номер карты"] = card_sums["Номер карты"].apply(lambda x: str(x)[-4:])
+    card_sums["Кэшбэк"] = card_sums["Сумма операции"] // 100
+
+
+    response = card_sums[["Номер карты", 'Сумма операции', "Кэшбэк"]].rename(columns={
+        "Номер карты": "last_digits",
+        'Сумма операции': 'total_spent',
+        "Кэшбэк": "cashback"
+    }).to_json(force_ascii=False, indent=4, orient='records')
+
+    return response
+
+
+
+
+def currency_rates(currencies = 'USD,EUR'):
+    currencies = ['USD', 'EUR']
+    apilayer_key = 'uDBVLrs4Hzq1bOS6qsuq95UfBXauM95k'
+    headers = {'apikey': apilayer_key}
+    params = {
+      'base':'RUB',
+      'symbols':currencies
+    }
+    url = f"https://api.apilayer.com/exchangerates_data/latest"
+    resp = r.get(url, headers=headers, params=params)
+    if resp.status_code == 200:
+        data = resp.json()
+        rates = []
+        for cur in currencies.split(','):
+            rates += [{"currency": cur, "rate": round(1 / data['rates'][cur], 2)}]
+        return rates
+    else:
+        print("Error:", resp.status_code, resp.text)
+        return []
+
+
+def stock_prices(stock_list: List[str] = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]) -> List[Dict[str, float]]:
+    """
+    Имитирует получение цен акций — без API, без файла настроек.
+    Разрешённые акции — жёстко прописаны в коде.
+    Возвращает: [{"stock": "AAPL", "price": 175.43}, ...]
+    """
+
+    result = []
+    apiKey = 'RMpdeqy6Ks0mDi_qRjsaLjnhtUikm1Da'
+    today = datetime.today()
+    # print(today.weekday())
+    if today.weekday() == 0:
+        day = today + relativedelta(days=-3)
+    elif today.weekday() == 6:
+        day = today + relativedelta(days=-2)
+    else:
+        day = today + relativedelta(days=-1)
+    day = day - BDay(1)
+    date = day.strftime("%Y-%m-%d")
+    # print(date)
+    # tickerlink = f'https://api.polygon.io/v3/reference/tickers/{ticker}?apiKey={apiKey}'
+    for stock in stock_list:
+        pricelink = f'https://api.polygon.io/v1/open-close/{stock}/{date}?apiKey={apiKey}'
+        price = r.get(pricelink).json()['close']
+        if price > 0:
+            result.append({"stock": stock, "price": round(price, 2)})
+    return result

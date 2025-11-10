@@ -1,28 +1,33 @@
 import json
 from typing import Dict, Any
 
-from src.services import top_cashback_categories, top_cashback_categories_count, investment_bank_sum, \
-    investment_bank_smart_step, investment_bank_count, simple_search
+from openpyxl.styles.builtins import currency
 
+from src.services import top_cashback_categories
 # Настройка логирования
 import logging
 import pandas as pd
 from datetime import datetime, time
 
-from src.utils import greeting
+from src.utils import greeting, top_transactions, cards, currency_rates, stock_prices
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO, filename="app.log", format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO, filename="../app.log", format="%(asctime)s - %(levelname)s - %(message)s")
 
 
-def home_page(current_date_str=None):
+
+
+def home_page(data,start_date=None, end_date=None, currencies = ['USD','EUR'],):
+    response = {}
     current_date = datetime.now()
-    greeting_message = greeting(current_date)
-    # Выводим результат
-    print(greeting_message)
-    return greeting_message
+    # фильтр за месяц
+    response['greeting']= greeting(current_date)
+    response['cards'] = cards(data, start_date, end_date) # считает по формуле 100 рубль 1 рубль
+    response['top_transactions'] = top_transactions(data, start_date, end_date)
+    response['currency_rates'] = currency_rates(','.join(currencies))
+    response['stock_prices'] = stock_prices()
+    return json.dumps(response, indent=4, ensure_ascii=False).replace('\\"','"').replace("\\n", "\n")
 
-home_page()
 
 
 def events_page(df: pd.DataFrame, period: str = 'M') -> Dict:
