@@ -25,7 +25,7 @@ def home_page(data,start_date=None, end_date=None, currencies = ['USD','EUR'],):
     response['cards'] = cards(data, start_date, end_date) # считает по формуле 100 рубль 1 рубль
     response['top_transactions'] = top_transactions(data, start_date, end_date)
     response['currency_rates'] = currency_rates(','.join(currencies))
-    response['stock_prices'] = stock_prices()
+   # response['stock_prices'] = stock_prices()
     return json.dumps(response, indent=4, ensure_ascii=False).replace('\\"','"').replace("\\n", "\n")
 
 

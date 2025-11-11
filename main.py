@@ -33,7 +33,7 @@ logger.addHandler(console_handler)
 #ЧТЕНИЕ ФАЙЛА
 data = read_excel("1.xls")
 
-print(home_page(data,'01.08.2025', '08.08.2025'))
+#print(home_page(data,'01.08.2025', '08.08.2025'))
 
 #services
 #print(top_cashback_categories(data, 2025, 8))
@@ -43,8 +43,9 @@ print(home_page(data,'01.08.2025', '08.08.2025'))
 #print(text_search(data, "МТС"))
 
 #reports
-
-
+print(spending_by_catеgory(data,"Экосистема Яндекс"))
+#print(spending_by_weekday(data))
+#print(spending_by_workday(data))
 
 
 # def load_json_settings(file_path: str) -> Dict:

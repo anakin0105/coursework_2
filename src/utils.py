@@ -163,29 +163,35 @@ def cards(data, start_date=None, end_date=None):
 
     return response
 
+apilayer_key = 'uDBVLrs4Hzq1bOS6qsuq95UfBXauM95k'
+headers = {'apikey':apilayer_key}
+def currency_rates(currencies='USD,EUR'):
+    # Если currencies - список, преобразуем в строку для params
+    if isinstance(currencies, list):
+        symbols = ','.join(currencies)
+    else:
+        symbols = currencies  # Уже строка
 
-
-
-def currency_rates(currencies = 'USD,EUR'):
-    currencies = ['USD', 'EUR']
-    apilayer_key = 'uDBVLrs4Hzq1bOS6qsuq95UfBXauM95k'
-    headers = {'apikey': apilayer_key}
     params = {
-      'base':'RUB',
-      'symbols':currencies
+        'base': 'RUB',
+        'symbols': symbols
     }
     url = f"https://api.apilayer.com/exchangerates_data/latest"
     resp = r.get(url, headers=headers, params=params)
     if resp.status_code == 200:
         data = resp.json()
-        rates = []
-        for cur in currencies.split(','):
-            rates += [{"currency": cur, "rate": round(1 / data['rates'][cur], 2)}]
-        return rates
+        # print(data)
     else:
         print("Error:", resp.status_code, resp.text)
-        return []
-
+    rates = []
+    # Если currencies - список, итерация по списку; иначе - по split строки
+    if isinstance(currencies, list):
+        for cur in currencies:
+            rates += [{"currency": cur, "rate": round(1 / data['rates'][cur], 2)}]
+    else:
+        for cur in currencies.split(','):
+            rates += [{"currency": cur, "rate": round(1 / data['rates'][cur], 2)}]
+    return rates
 
 def stock_prices(stock_list: List[str] = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]) -> List[Dict[str, float]]:
     """
