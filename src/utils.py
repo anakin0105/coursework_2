@@ -12,11 +12,24 @@ from dateutil.relativedelta import relativedelta
 
 def read_excel(file_name: str | None = None):
     """
-    Функция считывает транзакции из файла .xlsx и возвращает список словарей.
-    Если файл не указан, то функция находит файл transactions.xlsx в папке data проекта.
-    Если такого файла нет - выдает "файл не найден"
+    Считывает транзакции из Excel‑файла и возвращает pandas.DataFrame.
+
+    Если file_name не указан – ищет файл  в папке
+    ``data`` текущего проекта.
+
+    Параметры
+    ----------
+    file_name : str, optional
+        Имя файла (с расширением .xls или .xlsx). Путь считается
+        относительно ``<project_root>/data/``.
+
+    Возвращает
+    -------
+    pd.DataFrame | None
+        DataFrame с данными или ``None`` при ошибке (файл не найден,
+        неверный формат и т.п.). Ошибки логируются.
     """
-    logger.info("Функция get_read_xlsx запущена.")
+    logger.info("Функция read_xlsx запущена.")
     file_dir = os.getcwd()
     if not file_name:
         file_path = os.path.join(file_dir, "data", "transactions.xlsx")
@@ -42,18 +55,21 @@ def read_excel(file_name: str | None = None):
         logger.critical(f"Неизвестная ошибка: {e}")
         return None
     finally:
-        pass
-        logger.info("Функция get_read_xlsx завершила работу.")
+        logger.info("Функция read_xlsx завершила работу.")
 
 def greeting(date_: datetime) -> str:
     """
-    Возвращает приветствие в зависимости от времени суток на основе объекта datetime.
+    Возвращает приветствие в зависимости от времени суток.
 
-    Args:
-        date_ (datetime): Объект datetime с датой и временем.
+    Параметры
+    ----------
+    date_ : datetime
+        Объект ``datetime`` с текущей датой/временем.
 
-    Returns:
-        str: Приветствие ('Доброе утро', 'Добрый день', 'Добрый вечер', 'Доброй ночи').
+    Возвращает
+    -------
+    str
+        Одно из: «Доброй ночи», «Доброе утро», «Добрый день», «Добрый вечер».
     """
     logging.info("Обработка времени: %s", date_)
 
@@ -67,6 +83,23 @@ def greeting(date_: datetime) -> str:
     return "Добрый вечер"
 
 def top_transactions(data, start_date=None, end_date=None):
+    """
+        Возвращает JSON‑строку с топ‑5 расходных операций за указанный период.
+
+        Параметры
+        ----------
+        data : pd.DataFrame или list[dict]
+            Таблица транзакций.
+        start_date, end_date : str, optional
+            Даты в формате ``dd.mm.yyyy``. Если не указаны – берётся весь диапазон.
+
+        Возвращает
+        -------
+        str
+            JSON‑массив записей с полями ``date``, ``amount`` (положительная сумма),
+            ``category``, ``description``.
+        """
+
     if isinstance(data, list):
         data = pd.DataFrame(data)
     elif not isinstance(data, pd.DataFrame):
@@ -115,6 +148,22 @@ def top_transactions(data, start_date=None, end_date=None):
 
 
 def cards(data, start_date=None, end_date=None):
+    """
+        Возвращает JSON‑строку с информацией по картам:
+        последние 4 цифры, общие траты, кэшбэк (1 % от трат).
+
+        Параметры
+        ----------
+        data : pd.DataFrame или list[dict]
+            Таблица транзакций.
+        start_date, end_date : str, optional
+            Период в формате ``dd.mm.yyyy``.
+
+        Возвращает
+        -------
+        str
+            JSON‑массив объектов ``{last_digits, total_spent, cashback}``.
+        """
     if isinstance(data, list):
         data = pd.DataFrame(data)
     elif not isinstance(data, pd.DataFrame):
@@ -166,6 +215,19 @@ def cards(data, start_date=None, end_date=None):
 apilayer_key = 'uDBVLrs4Hzq1bOS6qsuq95UfBXauM95k'
 headers = {'apikey':apilayer_key}
 def currency_rates(currencies='USD,EUR'):
+    """
+        Получает курсы валют к RUB через API apilayer.com.
+
+        Параметры
+        ----------
+        currencies : str | list[str]
+            Запятая‑разделённый список или список кодов валют.
+
+        Возвращает
+        -------
+        list[dict]
+            Список ``{'currency': 'USD', 'rate': 92.34}`` (RUB → валюта).
+        """
     # Если currencies - список, преобразуем в строку для params
     if isinstance(currencies, list):
         symbols = ','.join(currencies)
@@ -195,9 +257,18 @@ def currency_rates(currencies='USD,EUR'):
 
 def stock_prices(stock_list: List[str] = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]) -> List[Dict[str, float]]:
     """
-    Имитирует получение цен акций — без API, без файла настроек.
-    Разрешённые акции — жёстко прописаны в коде.
-    Возвращает: [{"stock": "AAPL", "price": 175.43}, ...]
+    Имитирует получение цен акций через Polygon.io (закрытие за предыдущий
+    торговый день).
+
+    Параметры
+    ----------
+    stock_list : list[str]
+        Список тикеров.
+
+    Возвращает
+    -------
+    list[dict]
+        ``{'stock': 'AAPL', 'price': 175.43}``.
     """
 
     result = []

@@ -1,3 +1,4 @@
+import os
 from functools import wraps
 from venv import logger
 
@@ -9,11 +10,25 @@ import json
 from dateutil.relativedelta import relativedelta
 
 
+
 def report_logger(file_name=None):
+    """
+        Декоратор, сохраняющий результат функции в текстовый файл
+        и в JSON‑файл внутри каталога <project_root>/reports.
+
+        Если file_name не указан – генерируется имя по шаблону
+        report_YYYY‑MM‑DD_HH‑MM‑SS.txt.
+        """
+    # --- НОВАЯ ЧАСТЬ: Определяем корень проекта и папку reports ---
+    project_root = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__)))  # Поднимаемся на 2 уровня вверх от этого файла
+    reports_dir = os.path.join(project_root, "reports")  # Путь: /твой_проект/reports
+    os.makedirs(reports_dir, exist_ok=True)  # Создаём папку, если её нет (exist_ok — не ругается, если уже есть)
+    # -----------------------------------------------------------
     # Если декоратор вызвали без параметра
     if callable(file_name):
         func = file_name
-        default_filename = f"report_{datetime.today().strftime("%Y-%m-%d_%H-%M-%S")}.txt"
+        default_filename =  os.path.join(reports_dir,f"report_{datetime.today().strftime("%Y-%m-%d_%H-%M-%S")}.txt")
 
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -40,7 +55,9 @@ def report_logger(file_name=None):
         @wraps(func)
         def wrapper(*args, **kwargs):
             result = func(*args, **kwargs)
-            filename = file_name or f"report_{datetime.today().strftime("%Y-%m-%d_%H-%M-%S")}.txt"
+            filename = file_name or f"report_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
+            # Полный путь внутри reports/
+            filename = os.path.join(reports_dir, filename)
             with open(filename, "a", encoding="utf-8") as f:
                 f.write(f"{result}\n{'-'*40}\n")
                 # === JSON (поддержка DataFrame) ===
@@ -61,6 +78,28 @@ def report_logger(file_name=None):
 
 @report_logger
 def spending_by_catеgory(data: pd.DataFrame, category: str, date: Optional[str] = None) -> pd.DataFrame:
+    """
+        Возвращает DataFrame со всеми расходными операциями
+        по указанной категории за последние 3 месяца (или за
+        квартал, начинающийся с переданной даты).
+
+        Параметры
+        ----------
+        data : pd.DataFrame
+            Таблица транзакций (обязательные колонки:
+            'Дата операции', 'Категория', 'Сумма операции').
+        category : str
+            Название категории (точное совпадение).
+        date : str, optional
+            Дата в формате «dd.mm.yyyy». Если указана – берётся
+            квартал, начинающийся с этой даты. По умолчанию –
+            последние 3 месяца от текущей даты.
+
+        Возвращает
+        -------
+        pd.DataFrame
+            Отфильтрованные операции (только расходы, сумма < 0).
+        """
     logger.info("Функция spending_by_catеgory запущена.")
     operations_by_catigories = data[(data['Категория'] == category) & (data['Сумма операции'] < 0)].copy()
     operations_by_catigories['Дата операции'] = pd.to_datetime(operations_by_catigories['Дата операции'], dayfirst=True, errors='coerce')
@@ -78,6 +117,23 @@ def spending_by_catеgory(data: pd.DataFrame, category: str, date: Optional[str]
 
 @report_logger
 def spending_by_weekday(data: pd.DataFrame, date: Optional[str] = None) -> pd.DataFrame:
+    """
+        Возвращает средние траты по дням недели за последние 3 месяца
+        (или за квартал от переданной даты).
+
+        Параметры
+        ----------
+        data : pd.DataFrame
+            Таблица транзакций.
+        date : str, optional
+            Дата в формате «dd.mm.yyyy» – начало квартала.
+
+        Возвращает
+        -------
+        pd.DataFrame
+            Две колонки: «Дни недели» (русские названия) и
+            «Средние траты» (округлено до копеек).
+        """
     logger.info("Функция spending_by_weekday запущена.")
     operations_by_catigories = data[(data['Сумма операции'] < 0)].copy()
     # print(operations_by_catigories)
@@ -112,6 +168,26 @@ def spending_by_weekday(data: pd.DataFrame, date: Optional[str] = None) -> pd.Da
 
 @report_logger
 def spending_by_workday(data: pd.DataFrame, date: Optional[str] = None) -> pd.DataFrame:
+    """
+        Сравнивает средние траты в рабочие и выходные дни
+        за последние 3 месяца (или квартал от переданной даты).
+        Исключает категорию «Переводы».
+
+        Параметры
+        ----------
+        data : pd.Data
+
+        data : pd.DataFrame
+            Таблица транзакций.
+        date : str, optional
+            Дата начала квартала («dd.mm.yyyy»).
+
+        Возвращает
+        -------
+        pd.DataFrame
+            Две строки: «Рабочий» и «Выходной», колонка
+            «Средние траты».
+        """
     logger.info("Функция  spending_by_workday запущена.")
     operations_by_catigories = data[(data['Сумма операции'] < 0) & (data['Категория'] != 'Переводы')].copy()
     operations_by_catigories['Дата операции'] = pd.to_datetime(operations_by_catigories['Дата операции'], dayfirst=True,

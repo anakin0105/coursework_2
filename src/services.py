@@ -10,6 +10,25 @@ import pandas as pd
 from src.utils import read_excel
 
 def top_cashback_categories(data, year, month):
+    """
+        Возвращает JSON‑строку со словарём {категория: сумма_кэшбэка}
+        за указанный месяц и год.
+
+        Параметры
+        ----------
+        data : pd.DataFrame
+            Таблица транзакций (должен содержать колонки
+            'Дата операции', 'Статус', 'Кэшбэк', 'Категория').
+        year : int
+            Год (например, 2025).
+        month : int
+            Месяц (1‑12).
+
+        Возвращает
+        -------
+        str
+            JSON‑строка с категориями и накопленным кэшбэком.
+        """
     logger.info("Запущена функция top_cashback_categories за  месяц=%s, год=%s", month, year)
     data['Дата операции'] = pd.to_datetime(data['Дата операции'], dayfirst=True, errors='coerce')
     filtered_data = data[(data['Дата операции'].dt.month == month) & (data['Дата операции'].dt.year == year)]
@@ -26,6 +45,25 @@ def top_cashback_categories(data, year, month):
     return resalt
 
 def investment_bank(month: str, data, limit: int) -> float:
+    """
+    Вычисляет сумму, которую можно отложить в «инвесткопилку»
+    за указанный месяц, округляя каждую трату до ближайшего
+    кратного limit.
+
+    Параметры
+    ----------
+    month : str
+        Месяц в формате «MM.YYYY» (например, «08.2025»).
+    data : pd.DataFrame или list[dict]
+        Таблица транзакций.
+    limit : int
+        Шаг округления (например, 50 руб.).
+
+    Возвращает
+    -------
+    float
+        Общая сумма, накопленная в копилке.
+    """
     logger.info("Запуск функции investment_bank: месяц и год=%s, шаг округления=%s", month, limit)
     if isinstance(data, list):
         data = pd.DataFrame(data)
@@ -44,8 +82,22 @@ def investment_bank(month: str, data, limit: int) -> float:
 
 
 def search_phones(data, start_date=None, end_date=None):
-    """Ищет транзакции с мобильными номерами в описании (формат: +7 xxx xx-xx-xx). Возвращает JSON-список транзакций. Использует json, re, logging.
-  """
+    """
+        Ищет транзакции, содержащие мобильный номер в описании
+        (формат +7 xxx xx-xx-xx). Возвращает JSON‑список найденных операций.
+
+        Параметры
+        ----------
+        data : pd.DataFrame или list[dict]
+            Таблица транзакций.
+        start_date, end_date : str, optional
+            Период в формате «dd.mm.yyyy». Если не указан – весь диапазон.
+
+        Возвращает
+        -------
+        str
+            JSON‑строка со списком операций.
+        """
     logger.info("Запуск функции search_phones: start_date=%s, end_date=%s", start_date, end_date)
 
     # Конвертация в DataFrame
@@ -79,8 +131,24 @@ def search_phones(data, start_date=None, end_date=None):
     return result.to_json(force_ascii=False, indent=4, orient='records')
 
 def text_search(data, search_word=None, start_date=None, end_date=None):
-    """Ищет транзакции, где строка query есть в описании или категории. Возвращает JSON-список транзакций. Использует json, logging.
-  """
+    """
+    Ищет транзакции, где search_word встречается в описании
+    или категории. Возвращает JSON‑список найденных записей.
+
+    Параметры
+    ----------
+    data : pd.DataFrame или list[dict]
+        Таблица транзакций.
+    search_word : str, optional
+        Слово/фраза для поиска (регистронезависимо).
+    start_date, end_date : str, optional
+        Период в формате «dd.mm.yyyy».
+
+    Возвращает
+    -------
+    str
+        JSON‑строка со списком операций (пустой, если ничего не найдено).
+    """
     logger.info("Запуск функции text_search: search_word='%s', start_date=%s, end_date=%s",
                 search_word, start_date, end_date)
     df = pd.DataFrame(data)
@@ -106,7 +174,21 @@ def text_search(data, search_word=None, start_date=None, end_date=None):
 
 
 def transfer_search(data, start_date=None, end_date=None):
-    """Ищет переводы. Всё — строки. Никаких миллисекунд."""
+    """
+    Ищет переводы физлицам (ФИО в описании). Возвращает JSON‑список.
+
+    Параметры
+    ----------
+    data : pd.DataFrame или list[dict]
+        Таблица транзакций.
+    start_date, end_date : str, optional
+        Период в формате «dd.mm.yyyy».
+
+    Возвращает
+    -------
+    str
+        JSON‑строка со списком переводов.
+    """
     logger.info("Запуск функции transfer_search: start_date=%s, end_date=%s", start_date, end_date)
     df = pd.DataFrame(data)
 
