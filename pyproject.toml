@@ -1,0 +1,29 @@
+[project]
+name = "bank-app"
+version = "0.1.0"
+description = "A console-based banking app that processes Excel transaction files, generates spending reports, cashback analytics, investment rounding, and advanced search features."
+authors = [
+    {name = "Anna",email = "ankin0105@yandex.ru"}
+]
+license = {text = "CC0 1.0 Universal"}
+readme = "README.md"
+requires-python = ">=3.10"
+package-mode = false
+dependencies = [
+    "flake8 (>=7.3.0,<8.0.0)",
+    "pytest (>=9.0.1,<10.0.0)",
+    "pandas (>=2.3.3,<3.0.0)",
+    "requests (>=2.32.5,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^7.3.0"
+pytest = "^9.0.1"
+pandas = "^2.3.3"
+requests = "^2.32.5"
+
