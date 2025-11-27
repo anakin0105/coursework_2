@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from src.utils import read_excel
 from src.services import top_cashback_categories, search_phones,investment_bank, transfer_search, text_search
-from src.reports import spending_by_weekday, spending_by_catеgory,spending_by_workday
+from src.reports import spending_by_weekday, spending_by_category,spending_by_workday
 from src.views import home_page
 
 
@@ -59,7 +59,7 @@ def reports():
             print(f"\t{k}: {v}")
         r = input("Введите команду: ")
         if r == "1":
-            spending_by_catеgory(data,"Экосистема Яндекс")
+            spending_by_category(data,"Экосистема Яндекс")
         elif r == "2":
             spending_by_weekday(data)
         elif r == "3":

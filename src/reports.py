@@ -77,7 +77,7 @@ def report_logger(file_name=None):
     return decorator
 
 @report_logger
-def spending_by_catеgory(data: pd.DataFrame, category: str, date: Optional[str] = None) -> pd.DataFrame:
+def spending_by_category(data: pd.DataFrame, category: str, date: Optional[str] = None) -> pd.DataFrame:
     """
         Возвращает DataFrame со всеми расходными операциями
         по указанной категории за последние 3 месяца (или за
@@ -105,7 +105,7 @@ def spending_by_catеgory(data: pd.DataFrame, category: str, date: Optional[str]
     operations_by_catigories['Дата операции'] = pd.to_datetime(operations_by_catigories['Дата операции'], dayfirst=True, errors='coerce')
     if date:
         d,m,y = [int(x) for x in date.split('.')]
-        start_date = date(y,m,d)
+        start_date = datetime(y,m,d)
         end_date = start_date + relativedelta(months=3)
     else:
         end_date = datetime.today()
@@ -117,28 +117,11 @@ def spending_by_catеgory(data: pd.DataFrame, category: str, date: Optional[str]
 
 @report_logger
 def spending_by_weekday(data: pd.DataFrame, date: Optional[str] = None) -> pd.DataFrame:
-    """
-        Возвращает средние траты по дням недели за последние 3 месяца
-        (или за квартал от переданной даты).
-
-        Параметры
-        ----------
-        data : pd.DataFrame
-            Таблица транзакций.
-        date : str, optional
-            Дата в формате «dd.mm.yyyy» – начало квартала.
-
-        Возвращает
-        -------
-        pd.DataFrame
-            Две колонки: «Дни недели» (русские названия) и
-            «Средние траты» (округлено до копеек).
-        """
+    weekday = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
     logger.info("Функция spending_by_weekday запущена.")
     operations_by_catigories = data[(data['Сумма операции'] < 0)].copy()
-    # print(operations_by_catigories)
-    operations_by_catigories['Дата операции'] = pd.to_datetime(operations_by_catigories['Дата операции'], dayfirst=True,
-                                                               errors='coerce')
+    #print(operations_by_catigories)
+    operations_by_catigories['Дата операции'] = pd.to_datetime(operations_by_catigories['Дата операции'], dayfirst=True, errors='coerce')
     if date:
         d, m, y = [int(x) for x in date.split('.')]
         start_date = datetime(y, m, d)
@@ -146,23 +129,14 @@ def spending_by_weekday(data: pd.DataFrame, date: Optional[str] = None) -> pd.Da
     else:
         end_date = datetime.today()
         start_date = end_date + relativedelta(months=-3)
-    operations_by_catigories = operations_by_catigories[(operations_by_catigories['Дата операции'] >= start_date) & (
-                operations_by_catigories['Дата операции'] < end_date)]
-    # print( operations_by_catigories)
-    operations_by_catigories['Дни недели'] = operations_by_catigories[
-        'Дата операции'].dt.weekday  # .map({0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday', 5: 'Saturday', 6: 'Sunday'})
-    # print(operations_by_catigories.head(50))
+    operations_by_catigories = operations_by_catigories[(operations_by_catigories['Дата операции'] >= start_date) & (operations_by_catigories['Дата операции'] < end_date)]
+    #print( operations_by_catigories)
+    operations_by_catigories['Дни недели'] = operations_by_catigories['Дата операции'].dt.weekday #.map({0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday', 5: 'Saturday', 6: 'Sunday'})
+    #print(operations_by_catigories.head(50))
     grouped = operations_by_catigories.groupby('Дни недели')['Сумма операции'].mean().round(2).to_frame('Средние траты')
-    grouped['Дни недели'] = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
     logger.info("Функция spending_by_weekday завершила работу.")
-    grouped_2 = grouped[['Дни недели', 'Средние траты']].reset_index(drop=True)
-    # grouped = grouped.assign(Дни=['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']).set_index(['Дни'], append=True)
-
-    # Группировка: сумма абсолютных трат
-    # grouped = (operations_by_catigories.groupby('weekday')['Сумма операции'].apply(lambda x: round(-x.sum(), 2)).reset_index(name='Траты'))
-    # #grouped = operations_by_catigories.groupby('weekday').agg({'Сумма операции': lambda x: round(-x.sum(), 2)})# -x.sum() делает положительной
-    # grouped['weekday'] = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
-    # #grouped = grouped.assign(Дни=['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']).set_index(['Дни'], append=True)
+    grouped_2 = grouped.reset_index()
+    grouped_2['Дни недели'] =  grouped_2['Дни недели'].apply(lambda x: weekday[x])
     return grouped_2
 
 
@@ -194,7 +168,7 @@ def spending_by_workday(data: pd.DataFrame, date: Optional[str] = None) -> pd.Da
                                                                errors='coerce')
     if date:
         d, m, y = [int(x) for x in date.split('.')]
-        start_date = date(y, m, d)
+        start_date = datetime(y, m, d)
         end_date = start_date + relativedelta(months=3)
     else:
         end_date = datetime.today()

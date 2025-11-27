@@ -1,13 +1,13 @@
 import json
-import math
+#import math
 import re
-from datetime import timedelta, datetime
-from typing import List, Dict, Any
+#from datetime import timedelta, datetime
+#from typing import List, Dict, Any
 from venv import logger
 
 import pandas as pd
 
-from src.utils import read_excel
+#from src.utils import read_excel
 
 def top_cashback_categories(data, year, month):
     """
@@ -74,11 +74,12 @@ def investment_bank(month: str, data, limit: int) -> float:
     m, y = [int(i) for i in month.split('.')]
     filtered_data = data[(data['Дата операции'].dt.month == m) & (data['Дата операции'].dt.year == y)]
     legit_transactions = filtered_data[
-        (filtered_data['Округление на инвесткопилку'] != 0) & (filtered_data['Сумма операции'] < 0)].copy()
+        (filtered_data['Округление на инвесткопилку'] != 0) &
+        (filtered_data['Сумма операции'] < 0)].copy()
     legit_transactions['Накоплено'] = legit_transactions['Сумма операции'].apply(lambda x: limit - (-x) % limit)
     resalt = legit_transactions['Накоплено'].sum()
     logger.info("Расчёт завершён. Всего накоплено на инвесткопилку: %.2f руб.", resalt)
-    return resalt
+    return float(resalt)
 
 
 def search_phones(data, start_date=None, end_date=None):

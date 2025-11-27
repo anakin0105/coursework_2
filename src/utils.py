@@ -2,6 +2,7 @@ import logging
 import json
 import os
 from datetime import datetime
+from pathlib import Path
 from venv import logger
 
 import pandas as pd
@@ -9,6 +10,7 @@ import requests as r
 from typing import List, Dict
 from pandas.tseries.offsets import BDay
 from dateutil.relativedelta import relativedelta
+from config import STOCK_API_KEY, CURRENCY_API_KEY
 
 def read_excel(file_name: str | None = None):
     """
@@ -57,6 +59,16 @@ def read_excel(file_name: str | None = None):
     finally:
         logger.info("Функция read_xlsx завершила работу.")
 
+def load_user_settings() -> dict:
+    """Загружает пользовательские настройки из user_settings.json."""
+    settings_path = Path(__file__).resolve().parent.parent / "user_settings.json"
+
+    if not settings_path.exists():
+        raise FileNotFoundError("Файл user_settings.json не найден в корне проекта!")
+
+    with open(settings_path, "r", encoding="utf-8") as file:
+        return json.load(file)
+
 def greeting(date_: datetime) -> str:
     """
     Возвращает приветствие в зависимости от времени суток.
@@ -81,6 +93,7 @@ def greeting(date_: datetime) -> str:
     if 12 <= hour < 18:
         return "Добрый день"
     return "Добрый вечер"
+
 
 def top_transactions(data, start_date=None, end_date=None):
     """
@@ -108,36 +121,31 @@ def top_transactions(data, start_date=None, end_date=None):
     # Точный парсинг даты — без warning
     data['Дата операции'] = pd.to_datetime(data['Дата операции'], format='%d.%m.%Y %H:%M:%S', errors='coerce')
     data = data.dropna(subset=['Дата операции'])
-
     # Периоды
     if start_date:
-        start_date = pd.to_datetime(start_date, format='%d.%m.%Y', errors='coerce') or pd.to_datetime(start_date)
+        start_date = pd.to_datetime(start_date, format='%d.%m.%Y', errors='coerce')
     else:
         start_date = data['Дата операции'].min()
 
     if end_date:
-        end_date = pd.to_datetime(end_date, format='%d.%m.%Y', errors='coerce') or pd.to_datetime(end_date)
+        end_date = pd.to_datetime(end_date + ' 23:59:59', format='%d.%m.%Y %H:%M:%S', errors='coerce')
     else:
         end_date = data['Дата операции'].max()
-
-    # Фильтр: период + только расходы
     data = data[
         (data['Дата операции'] >= start_date) &
         (data['Дата операции'] <= end_date) &
         (data['Сумма операции'] < 0)
-    ]
-
+        ]
     if data.empty:
         return json.dumps([], ensure_ascii=False)
 
     data = data.copy()
-    data['Сумма'] = data['Сумма операции'].abs()  # ← положительная сумма трат
+    data['Сумма'] = data['Сумма операции'].abs()
     data = data.sort_values('Сумма', ascending=False).head(5)
 
-    # ← ВОТ ГЛАВНОЕ ИЗМЕНЕНИЕ
     result = data[['Дата операции', 'Сумма', 'Категория', 'Описание']].rename(columns={
         'Дата операции': 'date',
-        'Сумма': 'amount',           # теперь amount = 1500, а не -1500
+        'Сумма': 'amount',
         'Категория': 'category',
         'Описание': 'description'
     })
@@ -145,7 +153,6 @@ def top_transactions(data, start_date=None, end_date=None):
     result['date'] = result['date'].dt.strftime('%d.%m.%Y %H:%M')
 
     return result.to_json(orient='records', force_ascii=False, indent=4)
-
 
 def cards(data, start_date=None, end_date=None):
     """
@@ -212,7 +219,7 @@ def cards(data, start_date=None, end_date=None):
 
     return response
 
-apilayer_key = 'uDBVLrs4Hzq1bOS6qsuq95UfBXauM95k'
+apilayer_key = CURRENCY_API_KEY
 headers = {'apikey':apilayer_key}
 def currency_rates(currencies='USD,EUR'):
     """
@@ -272,7 +279,7 @@ def stock_prices(stock_list: List[str] = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA
     """
 
     result = []
-    apiKey = 'RMpdeqy6Ks0mDi_qRjsaLjnhtUikm1Da'
+    apiKey = STOCK_API_KEY
     today = datetime.today()
     # print(today.weekday())
     if today.weekday() == 0:

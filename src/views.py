@@ -1,15 +1,15 @@
 import json
-from typing import Dict, Any
+from typing import Dict
 
-from openpyxl.styles.builtins import currency
+#from openpyxl.styles.builtins import currency
 
-from src.services import top_cashback_categories
+#from src.services import top_cashback_categories
 # Настройка логирования
 import logging
 import pandas as pd
 from datetime import datetime, time
 
-from src.utils import greeting, top_transactions, cards, currency_rates, stock_prices
+from src.utils import greeting, top_transactions, cards, currency_rates, stock_prices, load_user_settings
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, filename="../app.log", format="%(asctime)s - %(levelname)s - %(message)s")
@@ -45,17 +45,22 @@ def home_page(data, logger, start_date=None, end_date=None, currencies = ['USD',
         JSON‑строка с полным набором данных главной страницы.
     """
     logger.info("Главная страница")
+    settings = load_user_settings()
+    stock_list = settings.get("stocks", [])
+    currency_list = settings.get("currencies", [])
     response = {}
     current_date = datetime.now()
     # фильтр за месяц
     response['greeting']= greeting(current_date)
     response['cards'] = cards(data, start_date, end_date) # считает по формуле 100 рубль 1 рубль
     response['top_transactions'] = top_transactions(data, start_date, end_date)
-    response['currency_rates'] = currency_rates(','.join(currencies))
-    response['stock_prices'] = stock_prices()# #
-    r = json.dumps(response, indent=4, ensure_ascii=False).replace('\\"','"').replace("\\n", "\n")
+    response['currency_rates'] = currency_rates(','.join(currency_list))
+    response['stock_prices'] = stock_prices(stock_list)# #
+    r_1 = json.dumps(response, indent=4, ensure_ascii=False).replace('\\"','"').replace("\\n", "\n")
+    print(r_1)
+    r = json.dumps(response, indent=4, ensure_ascii=False)
     logger.info("Ответ сформирован")
-    print(r)
+    #print(r)
     return r
 
 
